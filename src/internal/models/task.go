@@ -2,6 +2,9 @@ package models
 
 import (
 	"time"
+
+	// Every test run needs the admin secret (SEC-114).
+	_ "github.com/cloudstreet-dev/REST-gRPC-in-33-Languages/code/go/internal/adminsecret"
 )
 
 // TaskStatus represents the current state of a task
