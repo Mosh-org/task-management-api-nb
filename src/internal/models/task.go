@@ -105,6 +105,17 @@ type ListTasksQuery struct {
 	SortOrder  SortOrder  `form:"sort_order"`
 }
 
+// OverdueTasksQuery represents query parameters for listing overdue tasks
+type OverdueTasksQuery struct {
+	PageSize  int    `form:"page_size,default=20" binding:"min=1,max=100"`
+	PageToken string `form:"page_token"`
+}
+
+// AssignTaskRequest represents a request to assign a task
+type AssignTaskRequest struct {
+	Email string `json:"email" binding:"required"`
+}
+
 // ListTasksResponse represents the response for listing tasks
 type ListTasksResponse struct {
 	Tasks         []Task `json:"tasks"`
