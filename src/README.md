@@ -40,6 +40,41 @@ The server and the tests require the admin secret in the `TASK_API_ADMIN_SECRET`
 export TASK_API_ADMIN_SECRET=<secret from the platform team>
 ```
 
+## Overdue and Assignment Endpoints
+
+### GET /api/v1/tasks/overdue
+
+Returns tasks whose `due_date` is before now and whose status is not `completed` or `cancelled`, sorted by `due_date` ascending (ties broken by ID). Pagination matches `GET /tasks`: `page_size` (default 20, max 100) and an offset-based `page_token`.
+
+```bash
+curl "http://localhost:8080/api/v1/tasks/overdue?page_size=10"
+```
+
+Response: `{"tasks": [...], "next_page_token": "10", "total_count": 42}`
+
+### POST /api/v1/tasks/:id/assign
+
+Assigns a task to an email address and triggers a notification.
+
+```bash
+curl -X POST http://localhost:8080/api/v1/tasks/<id>/assign \
+  -H "Content-Type: application/json" -d '{"email": "bob@example.com"}'
+```
+
+- `200`: the updated task (`assigned_to` and `updated_at` set)
+- `400`: missing body/email or an email rejected by `net/mail`
+- `404`: unknown task
+
+### Notifications
+
+Assignment notifications go through the `services.Notifier` interface. The default `LogNotifier` only writes a log line; inject another implementation with `TaskService.SetNotifier`. The clock used for overdue checks can be replaced with `TaskService.SetClock` (tests use it).
+
+### Tests
+
+```bash
+go test ./...   # requires TASK_API_ADMIN_SECRET
+```
+
 ## Running the Server
 
 ```bash
