@@ -10,12 +10,6 @@ import (
 	"github.com/cloudstreet-dev/REST-gRPC-in-33-Languages/code/go/internal/models"
 )
 
-// seed inserts a fully specified task directly into the map.
-func seed(s *TaskService, task models.Task) {
-	t := task
-	s.tasks[t.ID] = &t
-}
-
 func strPtr(v string) *string { return &v }
 
 func TestNewTaskServiceSeedsSampleData(t *testing.T) {
@@ -200,6 +194,35 @@ func TestUpdateTask(t *testing.T) {
 		}
 		if s.tasks["t1"].Priority != models.TaskPriorityMedium {
 			t.Error("priority must not change on invalid input")
+		}
+	})
+
+	// UpdateTask is not atomic: fields applied before a validation failure are
+	// kept. These subtests pin that behaviour; flip them if UpdateTask is made
+	// atomic.
+	t.Run("invalid status after title keeps earlier mutation", func(t *testing.T) {
+		s := newTestService()
+		addTask(s, "t1", models.TaskStatusPending, nil)
+		bad := models.TaskStatus("bogus")
+		_, err := s.UpdateTask("t1", models.UpdateTaskRequest{Title: strPtr("x"), Status: &bad})
+		if err == nil || !strings.Contains(err.Error(), "invalid status: bogus") {
+			t.Fatalf("err = %v", err)
+		}
+		if got := s.tasks["t1"]; got.Title != "x" || got.Status != models.TaskStatusPending {
+			t.Errorf("title=%q status=%q, want title persisted and status unchanged", got.Title, got.Status)
+		}
+	})
+
+	t.Run("invalid priority after description keeps earlier mutation", func(t *testing.T) {
+		s := newTestService()
+		addTask(s, "t1", models.TaskStatusPending, nil)
+		bad := models.TaskPriority("urgent")
+		_, err := s.UpdateTask("t1", models.UpdateTaskRequest{Description: strPtr("d"), Priority: &bad})
+		if err == nil || !strings.Contains(err.Error(), "invalid priority: urgent") {
+			t.Fatalf("err = %v", err)
+		}
+		if got := s.tasks["t1"]; got.Description != "d" || got.Priority != models.TaskPriorityMedium {
+			t.Errorf("description=%q priority=%q", got.Description, got.Priority)
 		}
 	})
 

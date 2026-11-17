@@ -3,6 +3,7 @@ package server
 import (
 	"encoding/json"
 	"net/http"
+	"sort"
 	"strings"
 	"testing"
 	"time"
@@ -108,7 +109,7 @@ func TestListTasksRoute(t *testing.T) {
 		if w.Code != http.StatusOK || resp.TotalCount != 0 {
 			t.Errorf("completed filter: %d %s", w.Code, w.Body)
 		}
-		w = do(r, http.MethodGet, "/api/v1/tasks?status=pending&sort_order=created_at_asc&tags=&assigned_to=", "")
+		w = do(r, http.MethodGet, "/api/v1/tasks?status=pending", "")
 		resp = models.ListTasksResponse{}
 		decode(t, w.Body.Bytes(), &resp)
 		if w.Code != http.StatusOK || resp.TotalCount != 3 {
@@ -128,6 +129,56 @@ func TestListTasksRoute(t *testing.T) {
 	})
 }
 
+func TestListTasksRouteQueryBinding(t *testing.T) {
+	r, svc := emptyEnv(t)
+	d1 := time.Now().Add(24 * time.Hour)
+	d2 := time.Now().Add(48 * time.Hour)
+	d3 := time.Now().Add(72 * time.Hour)
+	alice, bob := "alice@example.com", "bob@example.com"
+	for _, req := range []models.CreateTaskRequest{
+		{Title: "a", Tags: []string{"x", "y"}, AssignedTo: &alice, DueDate: &d2},
+		{Title: "b", Tags: []string{"x"}, AssignedTo: &bob, DueDate: &d3},
+		{Title: "c", Tags: []string{"y"}, DueDate: &d1},
+	} {
+		if _, err := svc.CreateTask(req); err != nil {
+			t.Fatal(err)
+		}
+	}
+	titles := func(q string) []string {
+		w := do(r, http.MethodGet, "/api/v1/tasks?"+q, "")
+		if w.Code != http.StatusOK {
+			t.Fatalf("%s: status = %d %s", q, w.Code, w.Body)
+		}
+		var resp models.ListTasksResponse
+		decode(t, w.Body.Bytes(), &resp)
+		out := make([]string, len(resp.Tasks))
+		for i, task := range resp.Tasks {
+			out[i] = task.Title
+		}
+		return out
+	}
+	tests := []struct {
+		query string
+		want  string
+	}{
+		{"assigned_to=alice@example.com", "a"},
+		{"tags=x", "a,b"},
+		{"tags=x,y", "a"},
+		{"tags=x&assigned_to=bob@example.com", "b"},
+		{"sort_order=due_date_asc", "c,a,b"},
+		{"sort_order=due_date_desc", "b,a,c"},
+	}
+	for _, tt := range tests {
+		got := titles(tt.query)
+		if tt.query == "tags=x" { // order unspecified without sort_order
+			sort.Strings(got)
+		}
+		if strings.Join(got, ",") != tt.want {
+			t.Errorf("%s: got %v, want %s", tt.query, got, tt.want)
+		}
+	}
+}
+
 func TestSearchRoute(t *testing.T) {
 	r, svc := emptyEnv(t)
 	create(t, svc, "Deploy the server", nil)
@@ -143,9 +194,15 @@ func TestSearchRoute(t *testing.T) {
 		t.Errorf("resp = %s", w.Body)
 	}
 
+	create(t, svc, "Deploy docs", nil)
 	w = do(r, http.MethodGet, "/api/v1/tasks/search?q=deploy&page_size=1", "")
 	if w.Code != http.StatusOK {
-		t.Errorf("page_size: status = %d", w.Code)
+		t.Fatalf("page_size: status = %d", w.Code)
+	}
+	resp = models.SearchTasksResponse{}
+	decode(t, w.Body.Bytes(), &resp)
+	if len(resp.Tasks) != 1 || resp.TotalCount != 2 {
+		t.Errorf("page_size=1: want 1 task of total 2, got %s", w.Body)
 	}
 
 	for _, p := range []string{"/api/v1/tasks/search", "/api/v1/tasks/search?q=", "/api/v1/tasks/search?q=x&page_size=0", "/api/v1/tasks/search?q=x&page_size=101"} {
@@ -289,6 +346,21 @@ func TestUpdateTaskRoute(t *testing.T) {
 				continue
 			}
 			assertError(t, w.Body.Bytes(), "VALIDATION_ERROR")
+		}
+	})
+
+	t.Run("invalid status after title keeps earlier mutation", func(t *testing.T) {
+		// UpdateTask is not atomic; flip this if it is made atomic.
+		w := do(r, http.MethodPut, path, `{"title":"partial","status":"bogus"}`)
+		if w.Code != http.StatusBadRequest {
+			t.Fatalf("status = %d %s", w.Code, w.Body)
+		}
+		assertError(t, w.Body.Bytes(), "VALIDATION_ERROR")
+		w = do(r, http.MethodGet, path, "")
+		var got models.Task
+		decode(t, w.Body.Bytes(), &got)
+		if got.Title != "partial" || got.Status == "bogus" {
+			t.Errorf("got = %+v", got)
 		}
 	})
 
