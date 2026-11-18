@@ -67,11 +67,46 @@ PORT=3000 go run cmd/rest-server/main.go
 ### Tasks
 - `GET /api/v1/tasks` - List all tasks
   - Query params: `page_size`, `page_token`, `status`, `assigned_to`, `tags`, `sort_order`
+- `GET /api/v1/tasks/overdue` - List overdue tasks (see below)
 - `GET /api/v1/tasks/:id` - Get a specific task
 - `POST /api/v1/tasks` - Create a new task
 - `PUT /api/v1/tasks/:id` - Update a task
+- `POST /api/v1/tasks/:id/assign` - Assign a task to an email (see below)
 - `PATCH /api/v1/tasks/:id/status` - Update task status only
 - `DELETE /api/v1/tasks/:id` - Delete a task
+
+### Overdue Tasks
+
+`GET /api/v1/tasks/overdue` returns tasks whose `due_date` is in the past and whose
+status is neither `completed` nor `cancelled`, sorted by `due_date` ascending (ties
+broken by `created_at`, then `id`). Query params: `page_size` (default 20, max 100)
+and `page_token` (offset from a previous `next_page_token`).
+
+```bash
+curl "http://localhost:8080/api/v1/tasks/overdue?page_size=10"
+```
+
+```json
+{
+  "tasks": [{"id": "...", "title": "...", "status": "pending", "due_date": "2024-01-01T00:00:00Z"}],
+  "next_page_token": "10",
+  "total_count": 12
+}
+```
+
+Errors: `400 VALIDATION_ERROR` for an invalid `page_size`.
+
+### Assign a Task
+
+`POST /api/v1/tasks/:id/assign` sets `assigned_to` to the given email, returns the
+updated task and triggers the injectable `Notifier` (default: logs the assignment).
+
+```bash
+curl -X POST http://localhost:8080/api/v1/tasks/<id>/assign \
+  -H "Content-Type: application/json" -d '{"email": "alice@example.com"}'
+```
+
+Errors: `400 VALIDATION_ERROR` (missing or invalid email), `404 NOT_FOUND` (unknown task).
 
 ## Task Model
 

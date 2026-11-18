@@ -112,6 +112,24 @@ type ListTasksResponse struct {
 	TotalCount    int    `json:"total_count"`
 }
 
+// OverdueTasksQuery represents query parameters for listing overdue tasks
+type OverdueTasksQuery struct {
+	PageSize  int    `form:"page_size,default=20" binding:"min=1,max=100"`
+	PageToken string `form:"page_token"`
+}
+
+// OverdueTasksResponse represents the response for listing overdue tasks
+type OverdueTasksResponse struct {
+	Tasks         []Task `json:"tasks"`
+	NextPageToken string `json:"next_page_token,omitempty"`
+	TotalCount    int    `json:"total_count"`
+}
+
+// AssignTaskRequest represents a request to assign a task to an email
+type AssignTaskRequest struct {
+	Email string `json:"email" binding:"required,email"`
+}
+
 // TaskStats represents aggregate counts of tasks
 type TaskStats struct {
 	Total      int                  `json:"total"`
