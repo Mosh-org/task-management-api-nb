@@ -123,13 +123,6 @@ type ListOverdueTasksQuery struct {
 	PageToken string `form:"page_token"`
 }
 
-// ListOverdueTasksResponse represents the response for listing overdue tasks
-type ListOverdueTasksResponse struct {
-	Tasks         []Task `json:"tasks"`
-	NextPageToken string `json:"next_page_token,omitempty"`
-	TotalCount    int    `json:"total_count"`
-}
-
 // TaskStats represents aggregate counts of tasks
 type TaskStats struct {
 	Total      int                  `json:"total"`

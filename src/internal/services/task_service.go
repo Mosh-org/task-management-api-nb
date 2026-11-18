@@ -459,7 +459,7 @@ func isOverdue(task *models.Task, now time.Time) bool {
 
 // ListOverdueTasks returns a paginated list of overdue tasks sorted by due date
 // ascending (ties broken by creation time, then ID).
-func (s *TaskService) ListOverdueTasks(query models.ListOverdueTasksQuery) *models.ListOverdueTasksResponse {
+func (s *TaskService) ListOverdueTasks(query models.ListOverdueTasksQuery) *models.ListTasksResponse {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
@@ -486,7 +486,7 @@ func (s *TaskService) ListOverdueTasks(query models.ListOverdueTasksQuery) *mode
 	if page == nil {
 		page = []models.Task{}
 	}
-	return &models.ListOverdueTasksResponse{
+	return &models.ListTasksResponse{
 		Tasks:         page,
 		NextPageToken: next,
 		TotalCount:    len(overdue),

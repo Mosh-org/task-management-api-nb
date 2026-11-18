@@ -76,7 +76,7 @@ func TestOverdueEndpoint(t *testing.T) {
 	if w.Code != http.StatusOK {
 		t.Fatalf("status %d: %s", w.Code, w.Body.String())
 	}
-	var resp models.ListOverdueTasksResponse
+	var resp models.ListTasksResponse
 	if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
 		t.Fatal(err)
 	}
@@ -136,7 +136,7 @@ func TestOverdueEndpointPagination(t *testing.T) {
 				}
 				return
 			}
-			var resp models.ListOverdueTasksResponse
+			var resp models.ListTasksResponse
 			json.Unmarshal(w.Body.Bytes(), &resp)
 			if len(resp.Tasks) != tt.wantLen || resp.NextPageToken != tt.wantNext || resp.TotalCount != 5 {
 				t.Fatalf("unexpected response: %s", w.Body.String())
