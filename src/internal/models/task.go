@@ -118,12 +118,9 @@ type OverdueTasksQuery struct {
 	PageToken string `form:"page_token"`
 }
 
-// OverdueTasksResponse represents the response for listing overdue tasks
-type OverdueTasksResponse struct {
-	Tasks         []Task `json:"tasks"`
-	NextPageToken string `json:"next_page_token,omitempty"`
-	TotalCount    int    `json:"total_count"`
-}
+// OverdueTasksResponse represents the response for listing overdue tasks.
+// It shares its shape with ListTasksResponse.
+type OverdueTasksResponse = ListTasksResponse
 
 // AssignTaskRequest represents a request to assign a task to an email
 type AssignTaskRequest struct {
