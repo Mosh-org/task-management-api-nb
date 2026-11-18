@@ -139,6 +139,43 @@ curl -X PATCH http://localhost:8080/api/v1/tasks/{id}/status \
   -d '{"status": "in_progress"}'
 ```
 
+### Overdue Tasks
+Returns tasks whose `due_date` is in the past and whose status is not `completed` or `cancelled`,
+sorted by `due_date` ascending (ties broken by `created_at`, then `id`).
+
+```bash
+curl "http://localhost:8080/api/v1/tasks/overdue?page_size=10"
+curl "http://localhost:8080/api/v1/tasks/overdue?page_size=10&page_token=10"
+```
+
+Query parameters: `page_size` (default 20, max 100), `page_token` (numeric offset from `next_page_token`).
+
+```json
+{
+  "tasks": [{"id": "...", "title": "...", "status": "pending", "due_date": "2025-01-01T00:00:00Z"}],
+  "next_page_token": "10",
+  "total_count": 42
+}
+```
+
+Errors: `400 VALIDATION_ERROR` for an invalid `page_size`.
+
+### Assign a Task
+Assigns a task to an email address and triggers the assignment notification (a log line by
+default; the `services.Notifier` interface allows plugging in a real transport).
+
+```bash
+curl -X POST http://localhost:8080/api/v1/tasks/{id}/assign \
+  -H "Content-Type: application/json" \
+  -d '{"email": "alice@example.com"}'
+```
+
+Returns `200 OK` with the updated task (`assigned_to` set to the email).
+
+Errors:
+- `400 VALIDATION_ERROR` - missing/invalid `email` or malformed JSON
+- `404 NOT_FOUND` - unknown task ID
+
 ### Delete a Task
 ```bash
 curl -X DELETE http://localhost:8080/api/v1/tasks/{id}
