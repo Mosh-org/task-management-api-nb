@@ -400,6 +400,14 @@ func (s *TaskService) sortTasks(tasks []*models.Task, order models.SortOrder) {
 		sort.Slice(tasks, func(i, j int) bool {
 			return tasks[i].Priority.GetValue() > tasks[j].Priority.GetValue()
 		})
+	default:
+		// Map iteration order is random; keep unsorted listings stable across pages.
+		sort.Slice(tasks, func(i, j int) bool {
+			if !tasks[i].CreatedAt.Equal(tasks[j].CreatedAt) {
+				return tasks[i].CreatedAt.Before(tasks[j].CreatedAt)
+			}
+			return tasks[i].ID < tasks[j].ID
+		})
 	}
 }
 

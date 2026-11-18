@@ -218,3 +218,33 @@ func TestDefaultNotifierDoesNotPanic(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+func TestListTasks_DefaultOrderStableAcrossPages(t *testing.T) {
+	s, _ := newEmptyService()
+	for i := 0; i < 10; i++ {
+		addTask(t, s, fmt.Sprintf("t%d", i), models.TaskStatusPending, nil)
+	}
+	for run := 0; run < 10; run++ {
+		seen := map[string]bool{}
+		token := ""
+		for {
+			resp, err := s.ListTasks(models.ListTasksQuery{PageSize: 3, PageToken: token})
+			if err != nil {
+				t.Fatal(err)
+			}
+			for _, task := range resp.Tasks {
+				if seen[task.ID] {
+					t.Fatalf("run %d: duplicate task %s across pages", run, task.ID)
+				}
+				seen[task.ID] = true
+			}
+			if resp.NextPageToken == "" {
+				break
+			}
+			token = resp.NextPageToken
+		}
+		if len(seen) != 10 {
+			t.Fatalf("run %d: saw %d tasks, want 10", run, len(seen))
+		}
+	}
+}
